@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0d0b1f">
+<title>Color Match! — 30 Second Reflex Challenge</title>
+<style>
+  :root{
+    --bg:#0d0b1f;
+    --bg2:#151230;
+    --panel:#1d1940;
+    --border:#2f2a5c;
+    --text:#f4f2ff;
+    --muted:#9a93c7;
+    --accent:#8b5cf6;
+    --accent2:#06d6a0;
+    --warn:#ff5d8f;
+    --gold:#ffd166;
+    --radius:18px;
+    --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(1000px 500px at 50% -10%, #2b1f5e 0%, transparent 60%),
+      radial-gradient(800px 500px at 100% 110%, #1a3b5c 0%, transparent 55%),
+      var(--bg);
+    color:var(--text);
+    font-family:var(--font);
+    display:flex;align-items:center;justify-content:center;
+    padding:12px;overflow:hidden;
+    user-select:none;-webkit-user-select:none;
+  }
+  #app{
+    width:100%;max-width:520px;height:100%;max-height:920px;
+    display:flex;flex-direction:column;position:relative;
+  }
+
+  /* HUD */
+  #hud{display:none;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:10px 12px 12px;}
+  #hud.show{display:grid;}
+  .stat{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:8px 10px;text-align:center;}
+  .stat .label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700;}
+  .stat .value{font-size:22px;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums;}
+  #timeValue.warn{color:var(--warn);}
+  #comboValue{color:var(--gold);}
+  #comboValue.zero{color:var(--muted);}
+
+  /* ARENA */
+  #arena{
+    flex:1;position:relative;border-radius:var(--radius);
+    background:linear-gradient(180deg,rgba(139,92,246,.08),rgba(0,0,0,0) 40%),var(--bg2);
+    border:1px solid var(--border);overflow:hidden;touch-action:none;display:none;
+  }
+  #arena.show{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:22px;padding:18px;}
+
+  /* PROMPT */
+  .prompt{
+    font-size:clamp(18px,5.2vw,24px);font-weight:800;text-align:center;
+    color:var(--text);margin:0;letter-spacing:.01em;line-height:1.3;
+    max-width:90%;
+  }
+  .prompt .hex{font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--gold);}
+
+  /* CHOICES */
+  .choices{
+    display:grid;grid-template-columns:1fr 1fr;gap:14px;
+    width:100%;max-width:380px;
+  }
+  .choice{
+    aspect-ratio:1/1;border-radius:16px;border:2px solid rgba(255,255,255,.14);
+    cursor:pointer;position:relative;
+    box-shadow:0 8px 22px rgba(0,0,0,.35),inset 0 -6px 14px rgba(0,0,0,.2);
+    transition:transform .08s ease,filter .15s ease;
+    display:flex;align-items:center;justify-content:center;
+    font-weight:800;font-size:13px;color:rgba(255,255,255,.7);
+    text-shadow:0 1px 2px rgba(0,0,0,.4);
+    min-height:0;
+  }
+  .choice:active{transform:scale(.96);}
+  .choice.correct{outline:4px solid var(--accent2);outline-offset:2px;}
+  .choice.wrong{outline:4px solid var(--warn);outline-offset:2px;animation:shake .28s ease;}
+  @keyframes shake{
+    0%,100%{transform:translateX(0);}
+    25%{transform:translateX(-7px);}
+    75%{transform:translateX(7px);}
+  }
+  .choice.disabled{pointer-events:none;opacity:.55;}
+
+  /* SCREENS */
+  .screen{flex:1;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;gap:14px;}
+  .screen.show{display:flex;}
+  .logo{font-size:clamp(30px,9vw,46px);font-weight:900;letter-spacing:-.02em;line-height:1.05;margin:0;}
+  .logo .accent{background:linear-gradient(90deg,#8b5cf6,#06d6a0);-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .tagline{color:var(--muted);font-size:15px;max-width:340px;line-height:1.5;margin:0;}
+
+  .btn{
+    appearance:none;border:none;border-radius:14px;padding:16px 28px;
+    font-size:18px;font-weight:800;font-family:inherit;cursor:pointer;
+    transition:transform .08s ease;min-height:56px;
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    width:100%;max-width:340px;
+  }
+  .btn:active{transform:scale(.97);}
+  .btn:focus-visible{outline:3px solid var(--gold);outline-offset:3px;}
+  .btn-primary{background:linear-gradient(180deg,#a78bfa,#7c3aed);color:#fff;box-shadow:0 10px 24px rgba(139,92,246,.35);}
+  .btn-secondary{background:var(--panel);color:var(--text);border:1px solid var(--border);}
+  .btn-share{background:linear-gradient(180deg,#34d399,#059669);color:#062a1e;box-shadow:0 10px 24px rgba(6,214,160,.3);}
+  .btn-row{display:flex;gap:10px;width:100%;max-width:340px;}
+  .btn-row .btn{max-width:none;flex:1;padding-left:14px;padding-right:14px;}
+
+  .rules{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px;max-width:340px;width:100%;}
+  .rules li{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px 14px;font-size:14px;color:var(--muted);text-align:left;line-height:1.35;}
+
+  .records{display:flex;gap:10px;width:100%;max-width:340px;}
+  .record{flex:1;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:10px;text-align:center;}
+  .record .label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700;}
+  .record .value{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;}
+  .record .value.gold{color:var(--gold);}
+
+  .banner{display:none;width:100%;max-width:340px;background:linear-gradient(180deg,rgba(255,209,102,.14),rgba(255,209,102,.05));border:1px solid rgba(255,209,102,.45);border-radius:12px;padding:12px 14px;font-size:14px;color:#ffe6a3;line-height:1.4;}
+  .banner.show{display:block;}
+  .banner strong{color:var(--gold);}
+
+  .finalScore{font-size:clamp(60px,18vw,88px);font-weight:900;line-height:.95;letter-spacing:-.03em;font-variant-numeric:tabular-nums;background:linear-gradient(180deg,#ffffff,#a78bfa);-webkit-background-clip:text;background-clip:text;color:transparent;margin:0;}
+  .finalLabel{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);font-weight:800;margin:0;}
+  .msg{font-size:17px;font-weight:700;color:var(--text);margin:0;max-width:320px;line-height:1.35;}
+  .sub{font-size:13px;color:var(--muted);margin:0;}
+  .newBest{display:none;background:linear-gradient(90deg,#ffd166,#ff9f1c);color:#3a2400;font-weight:900;font-size:12px;letter-spacing:.1em;text-transform:uppercase;padding:6px 14px;border-radius:999px;}
+  .newBest.show{display:inline-block;}
+
+  #muteBtn{
+    position:absolute;top:10px;right:10px;z-index:50;width:44px;height:44px;
+    border-radius:12px;background:var(--panel);border:1px solid var(--border);
+    color:var(--text);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  }
+  #muteBtn:focus-visible{outline:3px solid var(--gold);outline-offset:2px;}
+
+  #adSlot{display:none;margin-top:10px;min-height:60px;border:1px dashed var(--border);border-radius:12px;color:var(--muted);font-size:11px;letter-spacing:.08em;text-transform:uppercase;align-items:center;justify-content:center;text-align:center;padding:10px;}
+  #adSlot.enabled{display:flex;}
+
+  /* float text */
+  .float{position:absolute;font-weight:800;font-size:22px;pointer-events:none;animation:floatUp .8s ease-out forwards;text-shadow:0 2px 8px rgba(0,0,0,.6);z-index:5;}
+  @keyframes floatUp{0%{transform:translate(-50%,-50%) scale(.8);opacity:1;}100%{transform:translate(-50%,-180%) scale(1.2);opacity:0;}}
+
+  @media (prefers-reduced-motion: reduce){
+    .float{animation:none;opacity:0;}
+    .choice.wrong{animation:none;}
+  }
+  @media (max-height: 640px){
+    .stat .value{font-size:18px;}
+    .btn{padding:13px 20px;min-height:50px;font-size:16px;}
+    .screen{gap:10px;padding:14px;}
+    .choices{gap:10px;}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <button id="muteBtn" type="button" aria-label="Toggle sound">🔊</button>
+
+  <!-- HUD -->
+  <div id="hud" aria-live="polite">
+    <div class="stat"><div class="label">Score</div><div class="value" id="scoreValue">0</div></div>
+    <div class="stat"><div class="label">Time</div><div class="value" id="timeValue">30</div></div>
+    <div class="stat"><div class="label">Combo</div><div class="value zero" id="comboValue">x1</div></div>
+  </div>
+
+  <!-- ARENA -->
+  <div id="arena">
+    <p class="prompt" id="promptText">Tap the matching color</p>
+    <div class="choices" id="choices"></div>
+  </div>
+
+  <!-- START -->
+  <section class="screen show" id="startScreen">
+    <h1 class="logo">COLOR <span class="accent">MATCH!</span></h1>
+    <p class="tagline">A color appears. Tap the matching swatch before the clock runs out. 30 seconds. How fast are your eyes?</p>
+
+    <div class="banner" id="challengeBanner" role="status"></div>
+
+    <ul class="rules">
+      <li>🎨 Match the target color shown in the prompt</li>
+      <li>⚡ Each correct answer builds your combo</li>
+      <li>❌ A wrong tap resets your combo</li>
+    </ul>
+
+    <div class="records">
+      <div class="record"><div class="label">Best</div><div class="value gold" id="bestValue">0</div></div>
+      <div class="record"><div class="label">Today</div><div class="value" id="dailyBestValue">0</div></div>
+    </div>
+
+    <button class="btn btn-primary" id="startBtn" type="button">▶ Play Now</button>
+  </section>
+
+  <!-- OVER -->
+  <section class="screen" id="overScreen">
+    <div class="newBest" id="newBestTag">🎉 New Personal Best!</div>
+    <p class="finalLabel">Final Score</p>
+    <p class="finalScore" id="finalScore">0</p>
+    <p class="msg" id="resultMsg"></p>
+    <p class="sub" id="resultSub"></p>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" id="againBtn" type="button">↻ Replay</button>
+      <button class="btn btn-share" id="shareBtn" type="button">↗ Share</button>
+    </div>
+    <button class="btn btn-secondary" id="menuBtn" type="button" style="max-width:340px">← Main Menu</button>
+
+    <div id="adSlot" aria-hidden="true">Optional ad space — clearly separated from gameplay</div>
+  </section>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ============ CONFIG ============ */
+  const CFG = {
+    ROUND_MS: 30000,
+    POINTS: 10,
+    WRONG_PENALTY: 15,
+    COMBO_STEP: 3,
+    COMBO_MAX: 5,
+    STORAGE_BEST: "cm_best_v1",
+    STORAGE_MUTE: "cm_mute_v1",
+    STORAGE_DAILY: "cm_daily_v1_",
+    COLORS: [
+      { name:"Red",    hex:"#ff4d6d" },
+      { name:"Orange", hex:"#ff9f1c" },
+      { name:"Yellow", hex:"#ffd60a" },
+      { name:"Green",  hex:"#06d6a0" },
+      { name:"Blue",   hex:"#4cc9f0" },
+      { name:"Purple", hex:"#9b5de5" },
+      { name:"Pink",   hex:"#f15bb5" },
+      { name:"Teal",   hex:"#2ec4b6" }
+    ]
+  };
+
+  /* ============ SAFE STORAGE ============ */
+  const store = {
+    get(k){ try{ return window.localStorage.getItem(k); }catch(e){ return null; } },
+    set(k,v){ try{ window.localStorage.setItem(k,String(v)); return true; }catch(e){ return false; } }
+  };
+
+  /* ============ URL ============ */
+  function readChallengeScore(){
+    try{
+      const p = new URLSearchParams(window.location.search);
+      const raw = p.get("score");
+      if (raw === null) return null;
+      if (!/^\d{1,6}$/.test(raw)) return null;
+      const n = parseInt(raw,10);
+      if (!Number.isFinite(n) || n < 1 || n > 100000) return null;
+      return n;
+    }catch(e){ return null; }
+  }
+
+  /* ============ DATE ============ */
+  function todayKey(){
+    const d = new Date();
+    const m = String(d.getMonth()+1).padStart(2,"0");
+    const day = String(d.getDate()).padStart(2,"0");
+    return d.getFullYear()+"-"+m+"-"+day;
+  }
+
+  /* ============ DOM ============ */
+  const $ = id => document.getElementById(id);
+  const el = {
+    hud:$("hud"), score:$("scoreValue"), time:$("timeValue"), combo:$("comboValue"),
+    arena:$("arena"), prompt:$("promptText"), choices:$("choices"),
+    startScreen:$("startScreen"), overScreen:$("overScreen"),
+    startBtn:$("startBtn"), againBtn:$("againBtn"), shareBtn:$("shareBtn"), menuBtn:$("menuBtn"),
+    bestValue:$("bestValue"), dailyBestValue:$("dailyBestValue"),
+    challengeBanner:$("challengeBanner"), newBestTag:$("newBestTag"),
+    finalScore:$("finalScore"), resultMsg:$("resultMsg"), resultSub:$("resultSub"),
+    muteBtn:$("muteBtn"), adSlot:$("adSlot")
+  };
+
+  /* ============ STATE ============ */
+  const state = {
+    running:false, score:0, combo:1, comboProgress:0, best:0,
+    startAt:0, endAt:0, rafId:0, gameOverFired:false, muted:false,
+    lastTickSecond:-1, currentTarget:null, locked:false
+  };
+
+  /* ============ AUDIO ============ */
+  let audioCtx = null;
+  function ensureAudio(){
+    if (state.muted) return null;
+    try{
+      if (!audioCtx){
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
+        audioCtx = new AC();
+      }
+      if (audioCtx.state === "suspended") audioCtx.resume().catch(()=>{});
+      return audioCtx;
+    }catch(e){ return null; }
+  }
+  function beep(freq,dur,type,vol){
+    const ctx = ensureAudio(); if (!ctx) return;
+    try{
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = type||"sine"; o.frequency.value = freq;
+      g.gain.value = vol==null?0.07:vol;
+      o.connect(g); g.connect(ctx.destination);
+      const t = ctx.currentTime;
+      g.gain.setValueAtTime(g.gain.value,t);
+      g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+      o.start(t); o.stop(t+dur+0.02);
+    }catch(e){}
+  }
+  function sfxCorrect(c){ beep(560 + c*80, 0.08, "sine", 0.07); }
+  function sfxWrong(){ beep(180, 0.16, "square", 0.08); }
+  function sfxStart(){ beep(400,0.1,"triangle",0.07); setTimeout(()=>beep(640,0.12,"triangle",0.07),90); }
+  function sfxEnd(){ beep(300,0.15,"sine",0.08); setTimeout(()=>beep(220,0.2,"sine",0.08),140); }
+
+  /* ============ PERSISTENCE ============ */
+  function loadBest(){
+    const raw = store.get(CFG.STORAGE_BEST);
+    const n = raw==null?0:parseInt(raw,10);
+    state.best = Number.isFinite(n) && n>=0 ? Math.min(n,100000) : 0;
+  }
+  function saveBest(v){ if (v>state.best){ state.best=v; store.set(CFG.STORAGE_BEST,v); } }
+  function loadDailyBest(){
+    const raw = store.get(CFG.STORAGE_DAILY+todayKey());
+    const n = raw==null?0:parseInt(raw,10);
+    return Number.isFinite(n) && n>=0 ? Math.min(n,100000) : 0;
+  }
+  function saveDailyBest(v){
+    if (v>loadDailyBest()) store.set(CFG.STORAGE_DAILY+todayKey(),v);
+  }
+  function loadMute(){ return store.get(CFG.STORAGE_MUTE)==="1"; }
+  function saveMute(m){ store.set(CFG.STORAGE_MUTE, m?"1":"0"); }
+
+  /* ============ HUD ============ */
+  function updateHud(){
+    el.score.textContent = String(state.score);
+    el.combo.textContent = "x"+state.combo;
+    el.combo.classList.toggle("zero", state.combo<=1);
+  }
+  function updateTime(remainingMs){
+    const sec = Math.max(0, Math.ceil(remainingMs/1000));
+    if (sec !== state.lastTickSecond){
+      state.lastTickSecond = sec;
+      el.time.textContent = String(sec);
+      el.time.classList.toggle("warn", sec<=10);
+    }
+  }
+
+  /* ============ ROUND LOGIC ============ */
+  function pickRandom(arr, exclude){
+    // pick a random item; optionally exclude one element
+    const pool = exclude ? arr.filter(x => x !== exclude) : arr;
+    return pool[Math.floor(Math.random()*pool.length)];
+  }
+
+  function shuffle(arr){
+    const a = arr.slice();
+    for (let i=a.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [a[i],a[j]] = [a[j],a[i]];
+    }
+    return a;
+  }
+
+  function buildRound(){
+    if (!state.running) return;
+    state.locked = false;
+
+    // Choose 4 distinct colors
+    const basePool = CFG.COLORS.slice();
+    const four = shuffle(basePool).slice(0,4);
+
+    // Target is one of the four
+    const target = pickRandom(four);
+    state.currentTarget = target;
+
+    // Prompt
+    el.prompt.innerHTML = 'Tap the <span style="color:'+target.hex+'">'+target.name+'</span> swatch';
+
+    // Render choices (shuffled)
+    const ordered = shuffle(four);
+    el.choices.innerHTML = "";
+    ordered.forEach(color=>{
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "choice";
+      btn.style.background = "radial-gradient(circle at 32% 28%, "+lighten(color.hex,20)+", "+color.hex+" 58%, "+darken(color.hex,18)+")";
+      btn.dataset.hex = color.hex;
+      btn.dataset.name = color.name;
+      btn.setAttribute("aria-label", color.name + " swatch");
+      btn.addEventListener("click", ()=>onChoice(btn, color));
+      el.choices.appendChild(btn);
+    });
+  }
+
+  function lighten(hex, amt){
+    return shade(hex, +amt);
+  }
+  function darken(hex, amt){
+    return shade(hex, -amt);
+  }
+  function shade(hex, amt){
+    // hex -> rgb -> shift each channel
+    let c = hex.replace("#","");
+    if (c.length === 3) c = c.split("").map(x=>x+x).join("");
+    const n = parseInt(c,16);
+    let r = (n>>16)&255, g = (n>>8)&255, b = n&255;
+    r = Math.max(0,Math.min(255,r+amt));
+    g = Math.max(0,Math.min(255,g+amt));
+    b = Math.max(0,Math.min(255,b+amt));
+    return "rgb("+r+","+g+","+b+")";
+  }
+
+  function onChoice(btn, color){
+    if (!state.running || state.locked) return;
+    state.locked = true;
+
+    const isCorrect = state.currentTarget && color.hex === state.currentTarget.hex;
+
+    // clear previous marks
+    Array.from(el.choices.children).forEach(c=>c.classList.remove("correct","wrong"));
+
+    // measure for float text
+    const rect = btn.getBoundingClientRect();
+    const arenaRect = el.arena.getBoundingClientRect();
+    const cx = rect.left - arenaRect.left + rect.width/2;
+    const cy = rect.top - arenaRect.top + rect.height/2;
+
+    if (isCorrect){
+      btn.classList.add("correct");
+      const gained = CFG.POINTS * state.combo;
+      state.score += gained;
+      state.comboProgress += 1;
+      if (state.comboProgress >= CFG.COMBO_STEP && state.combo < CFG.COMBO_MAX){
+        state.combo += 1;
+        state.comboProgress = 0;
+      }
+      updateHud();
+      floatText(cx, cy, "+"+gained, "#4dffa0");
+      sfxCorrect(state.combo);
+
+      // next round
+      setTimeout(()=>{
+        if (state.running) buildRound();
+      }, 260);
+    } else {
+      btn.classList.add("wrong");
+      // also highlight the right answer for a moment
+      Array.from(el.choices.children).forEach(c=>{
+        if (c.dataset.hex === state.currentTarget.hex) c.classList.add("correct");
+      });
+      state.score = Math.max(0, state.score - CFG.WRONG_PENALTY);
+      state.combo = 1;
+      state.comboProgress = 0;
+      updateHud();
+      floatText(cx, cy, "-"+CFG.WRONG_PENALTY, "#ff5d8f");
+      sfxWrong();
+
+      setTimeout(()=>{
+        if (state.running) buildRound();
+      }, 420);
+    }
+  }
+
+  function floatText(x, y, text, color){
+    const f = document.createElement("div");
+    f.className = "float";
+    f.textContent = text;
+    f.style.left = x+"px";
+    f.style.top = y+"px";
+    f.style.color = color;
+    el.arena.appendChild(f);
+    setTimeout(()=>{ if (f.parentNode) f.parentNode.removeChild(f); }, 800);
+  }
+
+  /* ============ TIMER ============ */
+  function tick(now){
+    if (!state.running) return;
+    const remaining = state.endAt - now;
+    if (remaining <= 0){ updateTime(0); endGame(); return; }
+    updateTime(remaining);
+    state.rafId = requestAnimationFrame(tick);
+  }
+
+  /* ============ START / END ============ */
+  function resetState(){
+    if (state.rafId){ cancelAnimationFrame(state.rafId); state.rafId = 0; }
+    state.running = false;
+    state.score = 0;
+    state.combo = 1;
+    state.comboProgress = 0;
+    state.gameOverFired = false;
+    state.lastTickSecond = -1;
+    state.locked = false;
+    el.choices.innerHTML = "";
+    el.prompt.textContent = "Tap the matching color";
+    updateHud();
+    el.time.textContent = String(Math.round(CFG.ROUND_MS/1000));
+    el.time.classList.remove("warn");
+  }
+
+  function startGame(){
+    resetState();
+    el.startScreen.classList.remove("show");
+    el.overScreen.classList.remove("show");
+    el.hud.classList.add("show");
+    el.arena.classList.add("show");
+
+    state.running = true;
+    state.startAt = performance.now();
+    state.endAt = state.startAt + CFG.ROUND_MS;
+    state.rafId = requestAnimationFrame(tick);
+
+    buildRound();
+    sfxStart();
+    ensureAudio();
+  }
+
+  function endGame(){
+    if (state.gameOverFired) return;
+    state.gameOverFired = true;
+    state.running = false;
+    if (state.rafId){ cancelAnimationFrame(state.rafId); state.rafId = 0; }
+
+    const finalScore = state.score;
+    const prevBest = state.best;
+    saveBest(finalScore);
+    saveDailyBest(finalScore);
+
+    el.bestValue.textContent = String(state.best);
+    el.dailyBestValue.textContent = String(loadDailyBest());
+
+    el.hud.classList.remove("show");
+    el.arena.classList.remove("show");
+    el.choices.innerHTML = "";
+    el.overScreen.classList.add("show");
+
+    el.finalScore.textContent = String(finalScore);
+    el.newBestTag.classList.toggle("show", finalScore > prevBest && finalScore > 0);
+
+    const challenge = readChallengeScore();
+    const beatChallenge = challenge !== null && finalScore > challenge;
+    el.resultMsg.textContent = pickMessage(finalScore, prevBest, challenge, beatChallenge);
+    el.resultSub.textContent = "Personal best: " + state.best + (challenge!==null?"  •  Challenge: "+challenge:"");
+
+    sfxEnd();
+  }
+
+  function pickMessage(score, prevBest, challenge, beatChallenge){
+    if (challenge !== null){
+      if (beatChallenge) return "You beat the challenge! 🏆";
+      return "So close — " + (challenge - score) + " points short of the challenge.";
+    }
+    if (score === 0) return "Rough round. Give it another shot.";
+    if (score > prevBest && prevBest > 0) return "New personal best! Sharp eyes.";
+    if (score === prevBest && prevBest > 0) return "Matched your best — one more round?";
+    if (score >= 400) return "Elite color vision. That was fast.";
+    if (score >= 200) return "Strong run — your combo was flowing.";
+    if (score >= 80) return "Solid. Build that combo higher next time.";
+    return "Warm-up done. Try again!";
+  }
+
+  /* ============ SHARE ============ */
+  function buildShareUrl(score){
+    try{
+      const url = new URL(window.location.href);
+      url.hash = "";
+      url.search = "?score=" + encodeURIComponent(String(score));
+      return url.toString();
+    }catch(e){ return window.location.href; }
+  }
+  function buildShareText(score){
+    return "I scored " + score + " in Color Match! Can you beat my score?";
+  }
+  async function shareScore(){
+    const score = state.score;
+    const text = buildShareText(score);
+    const url = buildShareUrl(score);
+    if (navigator.share){
+      try{ await navigator.share({ title:"Color Match!", text, url }); return; }
+      catch(err){ if (err && err.name === "AbortError") return; }
+    }
+    const payload = text + " " + url;
+    let ok = false;
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      try{ await navigator.clipboard.writeText(payload); ok = true; }catch(e){ ok = false; }
+    }
+    if (!ok){
+      try{
+        const ta = document.createElement("textarea");
+        ta.value = payload; ta.setAttribute("readonly","");
+        ta.style.position="fixed"; ta.style.opacity="0";
+        document.body.appendChild(ta); ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+        ok = true;
+      }catch(e){ ok = false; }
+    }
+    const original = el.shareBtn.textContent;
+    el.shareBtn.textContent = ok ? "✓ Copied!" : "Copy failed";
+    setTimeout(()=>{ el.shareBtn.textContent = original; }, 1400);
+  }
+
+  /* ============ MUTE ============ */
+  function applyMute(){
+    state.muted = loadMute();
+    el.muteBtn.textContent = state.muted ? "🔇" : "🔊";
+    el.muteBtn.setAttribute("aria-label", state.muted ? "Unmute sound" : "Mute sound");
+  }
+  function toggleMute(){
+    state.muted = !state.muted;
+    saveMute(state.muted);
+    el.muteBtn.textContent = state.muted ? "🔇" : "🔊";
+    el.muteBtn.setAttribute("aria-label", state.muted ? "Unmute sound" : "Mute sound");
+  }
+
+  /* ============ MENU ============ */
+  function refreshMenu(){
+    el.bestValue.textContent = String(state.best);
+    el.dailyBestValue.textContent = String(loadDailyBest());
+    const challenge = readChallengeScore();
+    if (challenge !== null){
+      el.challengeBanner.innerHTML = "";
+      const strong = document.createElement("strong");
+      strong.textContent = "Challenge: ";
+      el.challengeBanner.appendChild(strong);
+      el.challengeBanner.appendChild(document.createTextNode("Beat "+challenge+" points. Can you do it?"));
+      el.challengeBanner.classList.add("show");
+    } else {
+      el.challengeBanner.classList.remove("show");
+      el.challengeBanner.textContent = "";
+    }
+  }
+  function goToMenu(){
+    resetState();
+    el.hud.classList.remove("show");
+    el.arena.classList.remove("show");
+    el.overScreen.classList.remove("show");
+    el.startScreen.classList.add("show");
+    refreshMenu();
+  }
+
+  /* ============ VISIBILITY ============ */
+  function onVisibility(){
+    if (document.hidden && state.running) endGame();
+  }
+
+  /* ============ WIRE UP ============ */
+  function bindEvents(){
+    el.startBtn.addEventListener("click", startGame);
+    el.againBtn.addEventListener("click", startGame);
+    el.menuBtn.addEventListener("click", goToMenu);
+    el.shareBtn.addEventListener("click", shareScore);
+    el.muteBtn.addEventListener("click", toggleMute);
+    document.addEventListener("visibilitychange", onVisibility);
+    document.addEventListener("keydown", (e)=>{
+      if (e.key === "Escape" && state.running) endGame();
+      if ((e.key === " " || e.key === "Enter") && el.overScreen.classList.contains("show")){
+        e.preventDefault(); startGame();
+      }
+    });
+    // prevent scroll only inside arena during play
+    el.arena.addEventListener("touchmove", (e)=>{
+      if (state.running && e.cancelable) e.preventDefault();
+    }, { passive:false });
+  }
+
+  /* ============ BOOT ============ */
+  function boot(){
+    loadBest();
+    applyMute();
+    bindEvents();
+    refreshMenu();
+    updateHud();
+    // ad slot intentionally disabled until publisher config + consent
+    el.adSlot.classList.remove("enabled");
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+  else boot();
+
+})();
+</script>
+</body>
+</html>
